@@ -10,3 +10,4 @@ I've put together this demonstration using the Signal Protocol javascript APIs (
 
 https://github.com/signalapp/libsignal-protocol-javascript
  
+Note: InMemorySignalProtocolStore.js (and helpers.js) is taken from the signal github in the link above. In practice you can use your own store implementation.
