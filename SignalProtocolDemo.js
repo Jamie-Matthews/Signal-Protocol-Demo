@@ -58,14 +58,20 @@ class SignalProtocolManager {
      * @param message The message to send.
      */
     async encryptMessageAsync(remoteUserId, message) {
-        var address = new libsignal.SignalProtocolAddress(remoteUserId, 123);
-        var sessionBuilder = new libsignal.SessionBuilder(this.store, address);
+        var sessionCipher = this.store.loadSessionCipher(remoteUserId);
 
-        var remoteUserPreKey = this.signalServerStore.getPreKeyBundle(remoteUserId);
-        await sessionBuilder.processPreKey(remoteUserPreKey);
+        if (sessionCipher == null) {
+            var address = new libsignal.SignalProtocolAddress(remoteUserId, 123);
+            var sessionBuilder = new libsignal.SessionBuilder(this.store, address);
+    
+            var remoteUserPreKey = this.signalServerStore.getPreKeyBundle(remoteUserId);
+            await sessionBuilder.processPreKey(remoteUserPreKey);
 
-        var cipher = new libsignal.SessionCipher(this.store, address);
-        var cipherText = await cipher.encrypt(util.toArrayBuffer(message));
+            var sessionCipher = new libsignal.SessionCipher(this.store, address);
+            this.store.storeSessionCipher(remoteUserId, sessionCipher);
+        }
+
+        var cipherText = await sessionCipher.encrypt(util.toArrayBuffer(message));
 
         return cipherText;
     }
@@ -78,16 +84,21 @@ class SignalProtocolManager {
      * @returns The decrypted message string.
      */
     async decryptMessageAsync(remoteUserId, cipherText) {
-        var address = new libsignal.SignalProtocolAddress(remoteUserId, 123);
-        var cipher = new libsignal.SessionCipher(this.store, address);
+        var sessionCipher = this.store.loadSessionCipher(remoteUserId);
+
+        if (sessionCipher == null) {
+            var address = new libsignal.SignalProtocolAddress(remoteUserId, 123);
+            var sessionCipher = new libsignal.SessionCipher(this.store, address);
+            this.store.storeSessionCipher(remoteUserId, sessionCipher);
+        }
 
         var messageHasEmbeddedPreKeyBundle = cipherText.type == 3;
 
         if (messageHasEmbeddedPreKeyBundle) {
-            var decryptedMessage = await cipher.decryptPreKeyWhisperMessage(cipherText.body, 'binary');
+            var decryptedMessage = await sessionCipher.decryptPreKeyWhisperMessage(cipherText.body, 'binary');
             return util.toString(decryptedMessage);
         } else {
-            var decryptedMessage = cipher.decryptWhisperMessage(cipherText.body, 'binary');
+            var decryptedMessage = await sessionCipher.decryptWhisperMessage(cipherText.body, 'binary');
             return util.toString(decryptedMessage);
         }
     }

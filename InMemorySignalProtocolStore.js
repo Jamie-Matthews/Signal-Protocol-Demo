@@ -115,5 +115,19 @@ function SignalProtocolStore() {
         }
       }
       return Promise.resolve();
+    },
+
+    /* Stores and loads a session cipher */
+    storeSessionCipher(identifier, cipher) {
+        this.put('cipher' + identifier, cipher);
+    },
+    loadSessionCipher(identifier) {
+        var cipher = this.get('cipher' + identifier);
+        
+        if (cipher == undefined) {
+            return null;
+        } else {
+            return cipher;
+        }
     }
   };
